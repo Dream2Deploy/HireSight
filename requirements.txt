@@ -3,5 +3,5 @@ pandas
 plotly
 PyMuPDF
 reportlab
-sentence-transformers
+sentence-transformers==2.2.2
 scikit-learn
