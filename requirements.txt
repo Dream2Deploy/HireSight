@@ -1,0 +1,10 @@
+pymupdf
+docx2txt
+spacy
+nltk
+scikit-learn
+rapidfuzz
+sentence-transformers
+streamlit
+sqlalchemy
+openai

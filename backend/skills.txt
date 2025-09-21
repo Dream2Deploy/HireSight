@@ -1,0 +1,28 @@
+Python
+Java
+C++
+SQL
+Machine Learning
+Deep Learning
+TensorFlow
+PyTorch
+Pandas
+NumPy
+Data Structures
+Algorithms
+Git
+Docker
+Kubernetes
+AWS
+Azure
+HTML
+CSS
+JavaScript
+React
+Node.js
+Linux
+REST APIs
+NLP
+Computer Vision
+Matplotlib
+Scikit-learn
