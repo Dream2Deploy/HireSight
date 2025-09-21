@@ -1,31 +1,31 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from backend.resume_parser import extract_text, normalize_text, extract_skills_from_resume
+import os
+
+# Backend imports
+from backend.resume_parser import extract_text, normalize_text, extract_skills_from_resume, extract_candidate_info
 from backend.jd_parser import parse_jd
 from backend.matcher import final_score, generate_feedback
 from backend.db import init_db, save_evaluation, fetch_all
-import os
-import streamlit as st
+from backend.report_generator import generate_report
+
+# --- Page Config ---
 st.set_page_config(page_title="Resume Relevance Checker", layout="wide")
-
 st.write("✅ App started running...")
-
 
 # Initialize DB
 init_db()
 
-# Page config
-st.set_page_config(page_title="Resume Relevance Checker", layout="wide")
-
-# Sidebar Navigation
+# --- Sidebar Navigation ---
 st.sidebar.title("📍 Navigation")
 page = st.sidebar.radio("Go to", ["🏠 Home", "📊 Evaluate", "📑 Bulk Ranking", "📜 History"])
 
-
+# --- Main Title ---
 st.title("⚡ Automated Resume Relevance Checker")
 st.caption("Hackathon Project | Innomatics Research Labs")
 
+# ================= HOME =================
 if page == "🏠 Home":
     st.markdown("### Welcome!")
     st.write("""
@@ -38,9 +38,11 @@ if page == "🏠 Home":
     - Score relevance (hard + semantic)
     - Generate improvement suggestions
     - Store & browse evaluations
+    - Download PDF reports
     """)
     st.success("👉 Go to '📊 Evaluate' from the sidebar to start.")
 
+# ================= EVALUATE =================
 elif page == "📊 Evaluate":
     st.subheader("📂 Upload Resume & JD")
 
@@ -62,6 +64,10 @@ elif page == "📊 Evaluate":
         resume_text = normalize_text(extract_text(resume_path))
         jd_text = normalize_text(extract_text(jd_path))
 
+        # Candidate info
+        candidate_info = extract_candidate_info(resume_text)
+        candidate_name = candidate_info.get("name") or "Candidate"
+
         # Parse JD
         jd_parsed = parse_jd(jd_text, file_path=jd_path)
 
@@ -75,7 +81,7 @@ elif page == "📊 Evaluate":
         feedback = generate_feedback(jd_parsed, result)
 
         # --- Display Results ---
-        st.subheader("📊 Evaluation Results")
+        st.subheader(f"📊 Evaluation Results for {candidate_name}")
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Hard Match Score", f"{result['hard_score']}%")
@@ -96,6 +102,9 @@ elif page == "📊 Evaluate":
         st.plotly_chart(fig, use_container_width=True)
 
         # Expandable Sections
+        with st.expander("👤 Candidate Info"):
+            st.json(candidate_info)
+
         with st.expander("📄 Resume Extract"):
             st.text(resume_text[:1000] + " ...")
 
@@ -111,7 +120,7 @@ elif page == "📊 Evaluate":
         # Save to DB
         if st.button("💾 Save Evaluation"):
             save_evaluation(
-                candidate_name="Candidate",
+                candidate_name=candidate_name,
                 resume_file=resume_file.name,
                 jd_file=jd_file.name,
                 result=result,
@@ -119,6 +128,21 @@ elif page == "📊 Evaluate":
             )
             st.success("Evaluation saved to database!")
 
+        # PDF Report
+        if st.button("📄 Generate PDF Report"):
+            output_path = f"{candidate_name}_report.pdf"
+            generate_report(
+                candidate_name=candidate_name,
+                resume_file=resume_file.name,
+                jd_file=jd_file.name,
+                result=result,
+                feedback=feedback,
+                output_path=output_path
+            )
+            with open(output_path, "rb") as f:
+                st.download_button("⬇️ Download Candidate Report", f, output_path, mime="application/pdf")
+
+# ================= HISTORY =================
 elif page == "📜 History":
     st.subheader("📜 Previous Evaluations")
     rows = fetch_all()
@@ -132,6 +156,7 @@ elif page == "📜 History":
     else:
         st.info("No evaluations found yet. Run one from 📊 Evaluate.")
 
+# ================= BULK RANKING =================
 elif page == "📑 Bulk Ranking":
     st.subheader("📑 Bulk Resume Ranking")
 
@@ -159,12 +184,14 @@ elif page == "📑 Bulk Ranking":
             # Extract text & skills
             resume_text = normalize_text(extract_text(resume_path))
             resume_skills = extract_skills_from_resume(resume_text)
+            candidate_info = extract_candidate_info(resume_text)
+            candidate_name = candidate_info.get("name") or resume_file.name
 
             # Score
             result = final_score(resume_skills, jd_parsed, resume_text, jd_text)
 
             results.append({
-                "Candidate": resume_file.name,
+                "Candidate": candidate_name,
                 "Final Score": result["final_score"],
                 "Verdict": result["verdict"],
                 "Hard Score": result["hard_score"],

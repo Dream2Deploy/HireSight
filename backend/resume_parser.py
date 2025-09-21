@@ -57,3 +57,42 @@ def extract_skills_from_resume(resume_text: str) -> list:
             found.append(skill)
 
     return sorted(set(found))
+
+import re
+
+def extract_candidate_info(resume_text: str):
+    """
+    Extracts candidate's name, email, phone, LinkedIn, GitHub from resume text.
+    Returns a dict with available details.
+    """
+    info = {"name": None, "email": None, "phone": None, "linkedin": None, "github": None}
+
+    # Email
+    email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", resume_text)
+    if email_match:
+        info["email"] = email_match.group(0)
+
+    # Phone (simple Indian/global pattern)
+    phone_match = re.search(r"(\+?\d{1,3}[-\s]?)?\d{10}", resume_text)
+    if phone_match:
+        info["phone"] = phone_match.group(0)
+
+    # LinkedIn
+    linkedin_match = re.search(r"(https?://)?(www\.)?linkedin\.com/[A-Za-z0-9_\-/]+", resume_text, re.I)
+    if linkedin_match:
+        info["linkedin"] = linkedin_match.group(0)
+
+    # GitHub
+    github_match = re.search(r"(https?://)?(www\.)?github\.com/[A-Za-z0-9_\-/]+", resume_text, re.I)
+    if github_match:
+        info["github"] = github_match.group(0)
+
+    # Name (first line of resume, before email/phone usually)
+    lines = resume_text.split("\n")
+    for line in lines:
+        line = line.strip()
+        if line and info["email"] and info["email"] not in line:
+            info["name"] = line
+            break
+
+    return info
